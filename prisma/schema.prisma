@@ -12,10 +12,33 @@ model User {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  username   String   @unique
-  email      String
-  password   String
-  hashedRT   String?
+  username String  @unique
+  email    String
+  password String
+  hashedRT String?
+
+  accessTokens  AccessToken[]
+  refreshTokens RefreshToken[]
 
   @@map("users")
+}
+
+model AccessToken {
+  id         Int      @id @default(autoincrement())
+  token      String   @unique
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expires_at DateTime
+
+  @@map("access_tokens")
+}
+
+model RefreshToken {
+  id         Int      @id @default(autoincrement())
+  token      String   @unique
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expires_at DateTime
+
+  @@map("refresh_tokens")
 }
