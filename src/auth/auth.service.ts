@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AuthSigninDto, AuthSignupDto } from './dto';
 import * as argon2 from 'argon2';
@@ -67,13 +67,13 @@ export class AuthService {
   }
 
   async refreshTokens(userId: number, refreshToken: string): Promise<Tokens> {
-    const storedToken = await this.prisma.refreshToken.findFirst({ where: { userId, token: refreshToken } });
-    if (!storedToken) throw new ForbiddenException('Invalid Refresh Token');
+    const storedRefreshToken = await this.prisma.refreshToken.findFirst({ where: { userId, token: refreshToken } });
+    if (!storedRefreshToken) throw new ForbiddenException('Invalid Refresh Token');
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || !user.hashedRT) throw new ForbiddenException('Access Denied');
 
-    const refreshTokenMatches = await argon2.verify(user.hashedRT, refreshToken);
+    const refreshTokenMatches = storedRefreshToken.token === refreshToken && await argon2.verify(user.hashedRT, storedRefreshToken.token);
     if (!refreshTokenMatches) throw new ForbiddenException('Access Denied');
 
     const tokens: Tokens = await this.generateTokens(user.id, user.username);
