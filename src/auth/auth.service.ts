@@ -57,11 +57,11 @@ export class AuthService {
     return tokens;
   }
 
-  async logout(userId: number) {
-    await this.prisma.user.updateMany({
-      where: { id: userId, hashedRT: { not: null } },
-      data: { hashedRT: null },
-    });
+  async logout(userId: number, accessToken: string) {
+    const storedAccessToken = await this.prisma.accessToken.findFirst({ where: { userId, token: accessToken } });
+    if (!storedAccessToken) throw new ForbiddenException('Invalid Access Token');
+
+    await this.prisma.user.updateMany({ where: { id: userId, hashedRT: { not: null } }, data: { hashedRT: null } });
     await this.prisma.accessToken.deleteMany({ where: { userId } });
     await this.prisma.refreshToken.deleteMany({ where: { userId } });
   }

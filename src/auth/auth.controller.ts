@@ -5,6 +5,7 @@ import {
   HttpStatus,
   Post,
   UseGuards,
+  Headers
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthSigninDto, AuthSignupDto } from './dto';
@@ -14,7 +15,7 @@ import { getCurrentUser, getCurrentUserId, Public } from 'src/auth/decorators';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService) { }
 
   @Public()
   @Post('signup')
@@ -32,8 +33,17 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  logout(@getCurrentUserId() userId: number) {
-    return this.authService.logout(userId);
+  logout(
+    @getCurrentUserId() userId: number,
+    @Headers('authorization') authorization: string,
+  ) {
+    const accessToken = authorization?.split(' ')[1];
+
+    if (!accessToken) {
+      throw new Error('Access token is required');
+    }
+
+    return this.authService.logout(userId, accessToken);
   }
 
   @Public()
