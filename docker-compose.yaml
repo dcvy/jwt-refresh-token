@@ -1,0 +1,16 @@
+services:
+  my-sql:
+    image: mysql:8.3.0
+    ports:
+      - '3306:3306'
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpw
+      MYSQL_DATABASE: authdb
+      MYSQL_USER: authuser
+      MYSQL_PASSWORD: 310301
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
