@@ -12,6 +12,7 @@ import { AuthSigninDto, AuthSignupDto } from './dto';
 import { Tokens } from './types';
 import { RtGuard } from 'src/auth/guards';
 import { getCurrentUser, getCurrentUserId, Public } from 'src/auth/decorators';
+import * as jwt from 'jsonwebtoken';
 
 @Controller('auth')
 export class AuthController {
@@ -31,19 +32,27 @@ export class AuthController {
     return this.authService.signin(dto);
   }
 
+  @Public()
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  logout(
-    @getCurrentUserId() userId: number,
-    @Headers('authorization') authorization: string,
-  ) {
-    const accessToken = authorization?.split(' ')[1];
-
-    if (!accessToken) {
-      throw new Error('Access token is required');
+  logout(@Body('refreshToken') refreshToken: string) {
+    if (!refreshToken) {
+      throw new Error('Refresh token is required');
     }
 
-    return this.authService.logout(userId, accessToken);
+    let decodedToken: any;
+    try {
+      decodedToken = jwt.decode(refreshToken);
+    } catch (error) {
+      throw new Error('Invalid Refresh Token');
+    }
+
+    if (!decodedToken || !decodedToken.sub) {
+      throw new Error('Invalid Refresh Token');
+    }
+
+    const userId = decodedToken.sub;
+    return this.authService.logout(userId, refreshToken);
   }
 
   @Public()

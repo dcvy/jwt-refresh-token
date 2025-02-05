@@ -68,15 +68,19 @@ export class AuthService {
     return tokens;
   }
 
-  async logout(userId: number, accessToken: string) {
-    const storedAccessToken = await this.prisma.accessToken.findFirst({
-      where: { userId, token: accessToken },
+  async logout(userId: number, refreshToken: string) {
+    const storedRefreshToken = await this.prisma.refreshToken.findFirst({
+      where: { userId, token: refreshToken },
     });
-    if (!storedAccessToken)
-      throw new ForbiddenException('Invalid Access Token');
+
+    if (!storedRefreshToken) {
+      throw new ForbiddenException('Invalid Refresh Token');
+    }
 
     await this.prisma.accessToken.deleteMany({ where: { userId } });
     await this.prisma.refreshToken.deleteMany({ where: { userId } });
+
+    return { message: 'Logged out successfully' };
   }
 
   async refreshTokens(userId: number, refreshToken: string): Promise<Tokens> {

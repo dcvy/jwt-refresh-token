@@ -6,6 +6,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 
 type JwtPayload = {
   sub: string;
+  username: string;
 };
 
 @Injectable()
@@ -20,20 +21,17 @@ export class AccessTokenStrategy extends PassportStrategy(Strategy, 'jwt') {
 
   async validate(payload: JwtPayload) {
     const userId = parseInt(payload.sub);
+    const username = payload.username;
 
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true },
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, username },
+      select: { id: true, username: true },
     });
 
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
 
-    if (user.id !== userId) {
-      throw new UnauthorizedException('User ID mismatch');
-    }
-
-    return payload;
+    return user;
   }
 }
