@@ -12,33 +12,85 @@ model User {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  username String  @unique
+  username String @unique
   email    String
   password String
-  hashedRT String?
 
   accessTokens  AccessToken[]
   refreshTokens RefreshToken[]
 
+  userRoles UserRole[]
   @@map("users")
 }
 
 model AccessToken {
-  id         Int      @id @default(autoincrement())
-  token      String   @unique
-  userId     Int
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expires_at DateTime
+  id     Int    @id @default(autoincrement())
+  token  String @unique
+  userId Int
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("access_tokens")
 }
 
 model RefreshToken {
-  id         Int      @id @default(autoincrement())
-  token      String   @unique
-  userId     Int
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expires_at DateTime
+  id     Int    @id @default(autoincrement())
+  token  String @unique
+  userId Int
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("refresh_tokens")
+}
+
+model Role {
+  id           Int       @id @default(autoincrement())
+  name         String    @unique
+  description  String?
+  isSuperAdmin Boolean   @default(false)
+  created_at   DateTime? @default(now())
+  updated_at   DateTime? @updatedAt
+
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          Int       @id @default(autoincrement())
+  key         String    @unique
+  description String?
+  created_at  DateTime? @default(now())
+  updated_at  DateTime? @updatedAt
+
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           Int       @id @default(autoincrement())
+  roleId       Int
+  permissionId Int
+  created_at   DateTime? @default(now())
+  updated_at   DateTime? @updatedAt
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  id         Int       @id @default(autoincrement())
+  userId     Int       @unique
+  roleId     Int
+  created_at DateTime? @default(now())
+  updated_at DateTime? @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@map("user_roles")
 }

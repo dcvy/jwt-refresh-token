@@ -1,4 +1,10 @@
-import { ForbiddenException, Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AuthSigninDto, AuthSignupDto } from './dto';
 import * as argon2 from 'argon2';
@@ -14,8 +20,8 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private config: ConfigService,
-    private mailService: MailService
-  ) { }
+    private mailService: MailService,
+  ) {}
 
   async signup(dto: AuthSignupDto): Promise<Tokens> {
     const password = await this.generateArgonHash(dto.password);
@@ -29,9 +35,11 @@ export class AuthService {
         },
       });
 
-      const tokens: Tokens = await this.generateTokens(newUser.id, newUser.username);
+      const tokens: Tokens = await this.generateTokens(
+        newUser.id,
+        newUser.username,
+      );
       await this.saveTokensToDb(newUser.id, tokens);
-      await this.updateRefreshTokenHash(newUser.id, tokens.refresh_token);
       return tokens;
     } catch (error) {
       if (error instanceof PrismaClientKnownRequestError) {
@@ -44,46 +52,75 @@ export class AuthService {
   }
 
   async signin(dto: AuthSigninDto): Promise<Tokens> {
-    const user = await this.prisma.user.findUnique({ where: { username: dto.username } });
-    if (!user) throw new ForbiddenException('Access Denied');
+    const user = await this.prisma.user.findUnique({
+      where: { username: dto.username },
+    });
+    if (!user)
+      throw new UnauthorizedException('Username or password incorrect');
 
     const passwordMatches = await argon2.verify(user.password, dto.password);
-    if (!passwordMatches) throw new ForbiddenException('Access Denied');
+    if (!passwordMatches)
+      throw new UnauthorizedException('Username or password incorrect');
 
     const tokens: Tokens = await this.generateTokens(user.id, user.username);
     await this.saveTokensToDb(user.id, tokens);
-    await this.updateRefreshTokenHash(user.id, tokens.refresh_token);
-    await this.mailService.sendUserConfirmation(user.username, user.email, tokens.access_token, tokens.refresh_token);
+    //await this.mailService.sendEmailWelcome(user.username, user.email);
     return tokens;
   }
 
   async logout(userId: number, accessToken: string) {
-    const storedAccessToken = await this.prisma.accessToken.findFirst({ where: { userId, token: accessToken } });
-    if (!storedAccessToken) throw new ForbiddenException('Invalid Access Token');
+    const storedAccessToken = await this.prisma.accessToken.findFirst({
+      where: { userId, token: accessToken },
+    });
+    if (!storedAccessToken)
+      throw new ForbiddenException('Invalid Access Token');
 
-    await this.prisma.user.updateMany({ where: { id: userId, hashedRT: { not: null } }, data: { hashedRT: null } });
     await this.prisma.accessToken.deleteMany({ where: { userId } });
     await this.prisma.refreshToken.deleteMany({ where: { userId } });
   }
 
   async refreshTokens(userId: number, refreshToken: string): Promise<Tokens> {
-    const storedRefreshToken = await this.prisma.refreshToken.findFirst({ where: { userId, token: refreshToken } });
-    if (!storedRefreshToken) throw new ForbiddenException('Invalid Refresh Token');
+    const storedRefreshToken = await this.prisma.refreshToken.findFirst({
+      where: { userId, token: refreshToken },
+    });
+    if (!storedRefreshToken)
+      throw new UnauthorizedException('Username or password incorrect');
 
+    // Giải mã refreshToken để lấy thời gian hết hạn (exp)
+    const decoded = this.jwtService.decode(refreshToken) as { exp: number };
+
+    if (!decoded || !decoded.exp) {
+      throw new UnauthorizedException('Invalid refresh token format');
+    }
+
+    // Kiểm tra token đã hết hạn chưa
+    const currentTime = Math.floor(Date.now() / 1000); // Convert to seconds
+    if (decoded.exp < currentTime) {
+      throw new UnauthorizedException('Refresh token has expired');
+    }
+
+    // Lấy thông tin user
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user || !user.hashedRT) throw new ForbiddenException('Access Denied');
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
 
-    const refreshTokenMatches = storedRefreshToken.token === refreshToken && await argon2.verify(user.hashedRT, storedRefreshToken.token);
-    if (!refreshTokenMatches) throw new ForbiddenException('Access Denied');
+    const refreshTokenMatches = storedRefreshToken.token === refreshToken;
+    if (!refreshTokenMatches)
+      throw new UnauthorizedException('Username or password incorrect');
 
     const tokens: Tokens = await this.generateTokens(user.id, user.username);
-    await this.updateRefreshTokenHash(user.id, tokens.refresh_token);
     await this.saveTokensToDb(userId, tokens);
     return tokens;
   }
 
-  async validateAccessToken(userId: number, accessToken: string): Promise<boolean> {
-    const storedToken = await this.prisma.accessToken.findFirst({ where: { userId, token: accessToken } });
+  async validateAccessToken(
+    userId: number,
+    accessToken: string,
+  ): Promise<boolean> {
+    const storedToken = await this.prisma.accessToken.findFirst({
+      where: { userId, token: accessToken },
+    });
     return !!storedToken;
   }
 
@@ -91,21 +128,19 @@ export class AuthService {
     return await argon2.hash(data);
   }
 
-  async updateRefreshTokenHash(userId: number, refreshToken: string): Promise<void> {
-    const hash = await this.generateArgonHash(refreshToken);
-    await this.prisma.user.update({ where: { id: userId }, data: { hashedRT: hash } });
-  }
-
   async saveTokensToDb(userId: number, tokens: Tokens) {
-    const accessTokenExpiresAt = new Date(Date.now() + this.config.get('ACCESS_TOKEN_LIFE_TIME') * 60 * 1000);
-    const refreshTokenExpiresAt = new Date(Date.now() + this.config.get('REFRESH_TOKEN_LIFE_TIME') * 24 * 60 * 60 * 1000);
-
     await Promise.all([
       this.prisma.accessToken.create({
-        data: { token: tokens.access_token, userId, expires_at: accessTokenExpiresAt },
+        data: {
+          token: tokens.access_token,
+          userId,
+        },
       }),
       this.prisma.refreshToken.create({
-        data: { token: tokens.refresh_token, userId, expires_at: refreshTokenExpiresAt },
+        data: {
+          token: tokens.refresh_token,
+          userId,
+        },
       }),
     ]);
   }
@@ -114,11 +149,17 @@ export class AuthService {
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(
         { sub: userId, username },
-        { secret: this.config.get('JWT_ACCESS_TOKEN_SECRET_KEY'), expiresIn: this.config.get('ACCESS_TOKEN_LIFE_TIME') * 60 },
+        {
+          secret: this.config.get('JWT_ACCESS_TOKEN_SECRET_KEY'),
+          expiresIn: Number(this.config.get('ACCESS_TOKEN_LIFE_TIME')),
+        },
       ),
       this.jwtService.signAsync(
         { sub: userId, username },
-        { secret: this.config.get('JWT_REFRESH_TOKEN_SECRET_KEY'), expiresIn: this.config.get('REFRESH_TOKEN_LIFE_TIME') * 24 * 60 * 60 },
+        {
+          secret: this.config.get('JWT_REFRESH_TOKEN_SECRET_KEY'),
+          expiresIn: Number(this.config.get('REFRESH_TOKEN_LIFE_TIME')),
+        },
       ),
     ]);
 

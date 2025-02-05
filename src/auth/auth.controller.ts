@@ -5,7 +5,7 @@ import {
   HttpStatus,
   Post,
   UseGuards,
-  Headers
+  Headers,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthSigninDto, AuthSignupDto } from './dto';
@@ -15,7 +15,7 @@ import { getCurrentUser, getCurrentUserId, Public } from 'src/auth/decorators';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) { }
+  constructor(private authService: AuthService) {}
 
   @Public()
   @Post('signup')

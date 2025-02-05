@@ -7,6 +7,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { PugAdapter } from '@nestjs-modules/mailer/dist/adapters/pug.adapter';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { PugAdapter } from '@nestjs-modules/mailer/dist/adapters/pug.adapter';
       ttl: parseInt(process.env.RATE_LIMIT_TIME_TO_LIVE),
       limit: parseInt(process.env.RATE_LIMIT_MAX_NUMBER_REQUEST),
     }),
+    UsersModule,
   ],
 
   providers: [
