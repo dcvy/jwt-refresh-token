@@ -7,21 +7,27 @@ import {
   Param,
   Delete,
   ParseIntPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { PermissionsService } from './permissions.service';
 import { CreatePermissionDto } from './dto/create-permission.dto';
 import { UpdatePermissionDto } from './dto/update-permission.dto';
+import { PermissionsGuard } from '../permissions/guards/permissions.guard';
+import { Permissions } from '../permissions/decorators/permissions.decorator';
 
 @Controller('permissions')
+@UseGuards(PermissionsGuard)
 export class PermissionsController {
   constructor(private readonly permissionsService: PermissionsService) {}
 
   @Post()
+  @Permissions('CREATE_PERMISSION')
   create(@Body() createPermissionDto: CreatePermissionDto) {
     return this.permissionsService.create(createPermissionDto);
   }
 
   @Get()
+  @Permissions('VIEW_PERMISSION_LIST')
   findAll() {
     return this.permissionsService.findAll();
   }
@@ -32,6 +38,7 @@ export class PermissionsController {
   }
 
   @Patch(':id')
+  @Permissions('UPDATE_PERMISSION')
   update(
     @Param('id') id: string,
     @Body() updatePermissionDto: UpdatePermissionDto,
@@ -40,6 +47,7 @@ export class PermissionsController {
   }
 
   @Delete(':id')
+  @Permissions('DELETE_PERMISSION')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.permissionsService.remove(id);
   }

@@ -46,12 +46,15 @@ async function main() {
     { key: 'CREATE_USER', description: 'Create a new user' },
     { key: 'UPDATE_USER', description: 'Update an existing user' },
     { key: 'DELETE_USER', description: 'Delete a user' },
+    { key: 'VIEW_USER_LIST', description: 'View user list' },
     { key: 'CREATE_ROLE', description: 'Create a new role' },
     { key: 'UPDATE_ROLE', description: 'Update an existing role' },
     { key: 'DELETE_ROLE', description: 'Delete a role' },
+    { key: 'VIEW_ROLE_LIST', description: 'View role list' },
     { key: 'CREATE_PERMISSION', description: 'Create a new permission' },
     { key: 'UPDATE_PERMISSION', description: 'Update an existing permission' },
     { key: 'DELETE_PERMISSION', description: 'Delete a permission' },
+    { key: 'VIEW_PERMISSION_LIST', description: 'View permission list' },
   ];
 
   const createdPermissions = await Promise.all(
