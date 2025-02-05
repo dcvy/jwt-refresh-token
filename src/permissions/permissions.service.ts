@@ -37,19 +37,46 @@ export class PermissionsService {
   }
 
   async remove(id: number) {
-    // Kiểm tra xem quyền này có đang được gán cho vai trò Super Admin không
+    const permission = await this.prisma.permission.findUnique({
+      where: { id },
+    });
+
+    if (!permission) {
+      throw new NotFoundException('Permission not found');
+    }
+
     const isAssignedToSuperAdmin = await this.prisma.rolePermission.findFirst({
       where: {
         permissionId: id,
         role: {
-          isSuperAdmin: true, // Chỉ cần kiểm tra isSuperAdmin
+          isSuperAdmin: true, 
         },
       },
     });
 
     if (isAssignedToSuperAdmin) {
+      await this.prisma.rolePermission.deleteMany({
+        where: {
+          permissionId: id,
+          role: {
+            isSuperAdmin: false, 
+          },
+        },
+      });
+
+      return {
+        message:
+          'Permission is assigned to Super Admin and cannot be deleted, but removed from other roles.',
+      };
+    }
+
+    const isUsedByAnyRole = await this.prisma.rolePermission.findFirst({
+      where: { permissionId: id },
+    });
+
+    if (isUsedByAnyRole) {
       throw new ForbiddenException(
-        'Cannot remove a permission assigned to Super Admin',
+        'Cannot delete permission as it is still assigned to other roles.',
       );
     }
 

@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { PermissionsService } from './permissions.service';
 import { CreatePermissionDto } from './dto/create-permission.dto';
@@ -39,7 +40,7 @@ export class PermissionsController {
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.permissionsService.remove(+id);
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.permissionsService.remove(id);
   }
 }

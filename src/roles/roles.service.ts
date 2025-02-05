@@ -11,20 +11,18 @@ import { UpdateRoleDto } from './dto/update-role.dto';
 export class RolesService {
   constructor(private prisma: PrismaService) {}
 
-  // Lấy danh sách tất cả vai trò kèm theo quyền
   async getAllRoles() {
     return this.prisma.role.findMany({
       include: {
         rolePermissions: {
           include: {
-            permission: true, // Lấy thông tin quyền
+            permission: true, 
           },
         },
       },
     });
   }
 
-  // Lấy vai trò theo ID kèm theo quyền
   async getRoleById(id: number) {
     const role = await this.prisma.role.findUnique({
       where: { id },
@@ -41,7 +39,6 @@ export class RolesService {
     return role;
   }
 
-  // Tạo vai trò mới
   async createRole(dto: CreateRoleDto) {
     return this.prisma.role.create({
       data: {
@@ -58,7 +55,6 @@ export class RolesService {
     });
   }
 
-  // Cập nhật vai trò
   async updateRole(id: number, dto: UpdateRoleDto) {
     const existingRole = await this.prisma.role.findUnique({ where: { id } });
     if (!existingRole) throw new NotFoundException('Role not found');
