@@ -24,19 +24,23 @@ model User {
 }
 
 model AccessToken {
-  id     Int    @id @default(autoincrement())
-  token  String @unique
-  userId Int
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  userId    Int
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("access_tokens")
 }
 
 model RefreshToken {
-  id     Int    @id @default(autoincrement())
-  token  String @unique
-  userId Int
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  userId    Int
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("refresh_tokens")
 }

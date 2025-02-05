@@ -23,6 +23,10 @@ export class AuthService {
     private mailService: MailService,
   ) {}
 
+  decodeToken(token: string): any {
+    return this.jwtService.decode(token);
+  }
+
   async signup(dto: AuthSignupDto): Promise<Tokens> {
     const password = await this.generateArgonHash(dto.password);
 
@@ -70,51 +74,62 @@ export class AuthService {
 
   async logout(userId: number, refreshToken: string) {
     const storedRefreshToken = await this.prisma.refreshToken.findFirst({
-      where: { userId, token: refreshToken },
+      where: { userId, token: refreshToken, revoked: false },
     });
 
     if (!storedRefreshToken) {
       throw new ForbiddenException('Invalid Refresh Token');
     }
 
-    await this.prisma.accessToken.deleteMany({ where: { userId } });
-    await this.prisma.refreshToken.deleteMany({ where: { userId } });
+    await this.prisma.accessToken.updateMany({
+      where: { userId },
+      data: { revoked: true },
+    });
 
-    return { message: 'Logged out successfully' };
+    await this.prisma.refreshToken.updateMany({
+      where: { userId, token: storedRefreshToken.token },
+      data: { revoked: true },
+    });
+
+    return { message: 'Logged out successfully from this session' };
   }
 
   async refreshTokens(userId: number, refreshToken: string): Promise<Tokens> {
     const storedRefreshToken = await this.prisma.refreshToken.findFirst({
-      where: { userId, token: refreshToken },
+      where: { userId, token: refreshToken, revoked: false },
     });
-    if (!storedRefreshToken)
-      throw new UnauthorizedException('Username or password incorrect');
 
-    // Giải mã refreshToken để lấy thời gian hết hạn (exp)
+    if (!storedRefreshToken) {
+      throw new UnauthorizedException('Invalid or revoked refresh token');
+    }
+
     const decoded = this.jwtService.decode(refreshToken) as { exp: number };
-
     if (!decoded || !decoded.exp) {
       throw new UnauthorizedException('Invalid refresh token format');
     }
 
-    // Kiểm tra token đã hết hạn chưa
-    const currentTime = Math.floor(Date.now() / 1000); // Convert to seconds
+    const currentTime = Math.floor(Date.now() / 1000);
     if (decoded.exp < currentTime) {
       throw new UnauthorizedException('Refresh token has expired');
     }
 
-    // Lấy thông tin user
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
 
-    const refreshTokenMatches = storedRefreshToken.token === refreshToken;
-    if (!refreshTokenMatches)
-      throw new UnauthorizedException('Username or password incorrect');
+    if (storedRefreshToken.revoked) {
+      throw new UnauthorizedException('Refresh token already revoked');
+    }
+
+    await this.prisma.refreshToken.update({
+      where: { id: storedRefreshToken.id },
+      data: { revoked: true },
+    });
 
     const tokens: Tokens = await this.generateTokens(user.id, user.username);
     await this.saveTokensToDb(userId, tokens);
+
     return tokens;
   }
 
@@ -123,7 +138,7 @@ export class AuthService {
     accessToken: string,
   ): Promise<boolean> {
     const storedToken = await this.prisma.accessToken.findFirst({
-      where: { userId, token: accessToken },
+      where: { userId, token: accessToken, revoked: false },
     });
     return !!storedToken;
   }
