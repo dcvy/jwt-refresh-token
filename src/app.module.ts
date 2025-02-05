@@ -8,6 +8,8 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { PugAdapter } from '@nestjs-modules/mailer/dist/adapters/pug.adapter';
 import { UsersModule } from './users/users.module';
+import { PermissionsModule } from './permissions/permissions.module';
+import { RolesModule } from './roles/roles.module';
 
 @Module({
   imports: [
@@ -23,6 +25,8 @@ import { UsersModule } from './users/users.module';
       limit: parseInt(process.env.RATE_LIMIT_MAX_NUMBER_REQUEST),
     }),
     UsersModule,
+    PermissionsModule,
+    RolesModule,
   ],
 
   providers: [
