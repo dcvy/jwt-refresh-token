@@ -9,5 +9,6 @@ import { MailModule } from '../mail/mail.module';
   imports: [JwtModule.register({}), MailModule],
   providers: [AuthService, AccessTokenStrategy, RefreshTokenStrategy],
   controllers: [AuthController],
+  exports: [AuthService, JwtModule],
 })
 export class AuthModule {}
