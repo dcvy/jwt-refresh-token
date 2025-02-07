@@ -13,6 +13,8 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime';
 import { ConfigService } from '@nestjs/config';
 import { MailService } from './../mail/mail.service';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class AuthService {
@@ -69,6 +71,11 @@ export class AuthService {
     const tokens: Tokens = await this.generateTokens(user.id, user.username);
     await this.saveTokensToDb(user.id, tokens);
     //await this.mailService.sendEmailWelcome(user.username, user.email);
+    const authFilePath = path.join('/app/auth_data', `session_${user.id}.txt`);
+    fs.writeFileSync(
+      authFilePath,
+      `User: ${user.username} logged in at ${new Date().toISOString()}`,
+    );
     return tokens;
   }
 
@@ -90,6 +97,11 @@ export class AuthService {
       where: { userId, token: storedRefreshToken.token },
       data: { revoked: true },
     });
+
+    const authFilePath = path.join('/app/auth_data', `session_${userId}.txt`);
+    if (fs.existsSync(authFilePath)) {
+      fs.unlinkSync(authFilePath);
+    }
 
     return { message: 'Logged out successfully from this session' };
   }

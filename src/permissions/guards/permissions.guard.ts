@@ -6,10 +6,15 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { I18nService } from 'nestjs-i18n';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
-  constructor(private reflector: Reflector, private prisma: PrismaService) {}
+  constructor(
+    private reflector: Reflector,
+    private prisma: PrismaService,
+    private i18n: I18nService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const requiredPermissions = this.reflector.get<string[]>(
@@ -23,7 +28,9 @@ export class PermissionsGuard implements CanActivate {
     const user = request.user;
 
     if (!user || !user.id || !user.username) {
-      throw new ForbiddenException('User not authenticated');
+      throw new ForbiddenException(
+        await this.i18n.translate('errors.unauthorized'),
+      );
     }
 
     const userPermissions = await this.prisma.rolePermission.findMany({
@@ -54,7 +61,9 @@ export class PermissionsGuard implements CanActivate {
     );
 
     if (!hasPermission) {
-      throw new ForbiddenException('Insufficient permissions');
+      throw new ForbiddenException(
+        await this.i18n.translate('errors.forbidden'),
+      );
     }
 
     return true;

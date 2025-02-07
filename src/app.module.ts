@@ -10,9 +10,29 @@ import { PugAdapter } from '@nestjs-modules/mailer/dist/adapters/pug.adapter';
 import { UsersModule } from './users/users.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { RolesModule } from './roles/roles.module';
+import { I18nController } from './i18n/i18n.controller';
+import {
+  I18nModule,
+  I18nJsonLoader,
+  QueryResolver,
+  AcceptLanguageResolver,
+} from 'nestjs-i18n';
+import * as path from 'path';
 
 @Module({
   imports: [
+    I18nModule.forRoot({
+      fallbackLanguage: 'en', // Ngôn ngữ mặc định
+      loader: I18nJsonLoader,
+      loaderOptions: {
+        path: path.join(__dirname, '../i18n/locales'), // Đường dẫn đến thư mục chứa file JSON
+        watch: true, // Theo dõi thay đổi trong file JSON
+      },
+      resolvers: [
+        new AcceptLanguageResolver(),
+        new QueryResolver(['lang']), // Lấy ngôn ngữ từ Query Param
+      ],
+    }),
     PrismaModule,
     AuthModule,
     // To enable `configModule` for all routes
@@ -38,5 +58,7 @@ import { RolesModule } from './roles/roles.module';
       useClass: ThrottlerGuard,
     },
   ],
+
+  controllers: [I18nController],
 })
 export class AppModule {}

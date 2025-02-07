@@ -1,0 +1,4 @@
+{
+    "unauthorized": "User not authenticated",
+    "forbidden": "Access Denied"
+}

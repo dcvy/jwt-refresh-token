@@ -49,7 +49,7 @@ export class PermissionsService {
       where: {
         permissionId: id,
         role: {
-          isSuperAdmin: true, 
+          isSuperAdmin: true,
         },
       },
     });
@@ -59,7 +59,7 @@ export class PermissionsService {
         where: {
           permissionId: id,
           role: {
-            isSuperAdmin: false, 
+            isSuperAdmin: false,
           },
         },
       });

@@ -1,6 +1,9 @@
+version: '3.8'
+
 services:
   my-sql:
     image: mysql:8.3.0
+    restart: always
     ports:
       - '3306:3306'
     environment:
@@ -10,7 +13,32 @@ services:
       MYSQL_PASSWORD: 310301
     networks:
       - app-network
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  nest-app:
+    build: .
+    restart: always
+    ports:
+      - '3000:3000'
+    depends_on:
+      - my-sql
+    networks:
+      - app-network
+    env_file:
+      - .env
+    volumes:
+      - ./src:/app/src
+      - ./package.json:/app/package.json
+      - ./prisma:/app/prisma
+      - auth_data:/app/auth_data
+      - i18n_data:/app/i18n
 
 networks:
   app-network:
     driver: bridge
+
+volumes:
+  mysql_data:
+  auth_data:
+  i18n_data:
