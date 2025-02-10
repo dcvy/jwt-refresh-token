@@ -22,16 +22,13 @@ import * as path from 'path';
 @Module({
   imports: [
     I18nModule.forRoot({
-      fallbackLanguage: 'en', // Ngôn ngữ mặc định
+      fallbackLanguage: 'en',
       loader: I18nJsonLoader,
       loaderOptions: {
-        path: path.join(__dirname, '../i18n/locales'), // Đường dẫn đến thư mục chứa file JSON
-        watch: true, // Theo dõi thay đổi trong file JSON
+        path: path.join('/app/i18n/locales'),
+        watch: true,
       },
-      resolvers: [
-        new AcceptLanguageResolver(),
-        new QueryResolver(['lang']), // Lấy ngôn ngữ từ Query Param
-      ],
+      resolvers: [new AcceptLanguageResolver(), new QueryResolver(['lang'])],
     }),
     PrismaModule,
     AuthModule,
